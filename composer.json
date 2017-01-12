@@ -1,0 +1,7 @@
+{
+  "require": {
+    "wodby/wodby-sdk-php": "dev-master",
+    "symfony/finder": "^3.1",
+    "symfony/filesystem": "^3.1"
+  }
+}
