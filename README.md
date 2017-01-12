@@ -1,7 +1,9 @@
 # Cleanup script
 
-Download PHP libs
-`docker run --rm -v "$PWD":/app -v /srv/wodby:/srv/wodby -w /app composer update`
+Move outdated file into `/srv/wodby/_deleted` directory:
+`docker run --rm -it -v /srv/wodby:/srv/wodby wodby/cleanup 'API Token'`
 
-Delete old files
-`docker run --rm -v "$PWD":/app -v /srv/wodby:/srv/wodby -w /app php:alpine php remove-instances.php`
+Check all you sites are working well.
+ 
+Completely remove outdated data:
+`rm -rf /srv/wodby/_deleted`

@@ -9,9 +9,13 @@ use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\SplFileInfo;
 use \Wodby\Api\Entity;
 
-$client = new GuzzleHttp\Client();
-$token = '<API Token>';
-$api = new Wodby\Api($token, $client);
+if (empty($argv[1])) {
+  echo 'Error. API token have to be specified.', PHP_EOL;
+  exit;
+}
+
+$token = $argv[1];
+$api = new Wodby\Api($token, new GuzzleHttp\Client());
 $orgs = $api->organization()->loadAll();
 $data = [];
 
@@ -35,7 +39,7 @@ foreach ($orgs as $org) {
   }
 }
 
-echo sprintf('Fetched %d instances', count($data)), PHP_EOL;
+echo sprintf('Fetched %d instances.', count($data)), PHP_EOL;
 
 $fs = new Filesystem();
 foreach (['_deleted', 'backups', 'instances', 'srv', 'svc', 'usr'] as $name) {
@@ -53,10 +57,8 @@ $dirs->directories()
   ->in(WORKING_DIR . '/srv')
   ->in(WORKING_DIR . '/svc')
   ->in(WORKING_DIR . '/usr');
-echo 'Done', PHP_EOL;
 
-$ok_counter = 0;
-$deleted_counter = 0;
+$cleanup = [];
 
 foreach ($dirs as $dir) {
   /** @var SplFileInfo $dir */
@@ -76,21 +78,39 @@ foreach ($dirs as $dir) {
   }
 
   if ($found) {
-    $ok_counter++;
-    echo $dir->getBasename(), ': Ok', PHP_EOL;
     continue;
   }
 
-  $rel_name = substr($dir->getPathname(), strlen(WORKING_DIR) + 1);
-
-  echo "Deleting: $rel_name...", PHP_EOL;
-  $fs->mkdir(WORKING_DIR . "/_deleted/$rel_name");
-  $fs->rename($dir->getPathname(), WORKING_DIR . "/_deleted/$rel_name", TRUE);
-  echo "Moved: " . $dir->getPathname() . ' => ' . WORKING_DIR . "/_deleted/$rel_name", PHP_EOL;
-  $deleted_counter++;
-  echo "Done", PHP_EOL;
-
-  sleep(1);
+  $cleanup[] = [
+    'src' => $dir->getPathname(),
+    'dest' => WORKING_DIR . '/_deleted/' . substr($dir->getPathname(), strlen(WORKING_DIR) + 1),
+  ];
 }
 
-echo sprintf('Dirs stat. Ok: %d, Deleted: %d', $ok_counter, $deleted_counter), PHP_EOL;
+if (empty($cleanup)) {
+  echo 'Ok. Nothing to cleanup.', PHP_EOL;
+  exit;
+}
+
+echo 'The following dirs should be cleaned:', PHP_EOL;
+foreach ($cleanup as $item) {
+  echo ' - ', $item['src'], PHP_EOL;
+}
+
+echo PHP_EOL;
+$confirm = readline('Are you sure you want to move these into ' . WORKING_DIR . '/_deleted?' . ' (y/N): ');
+
+if (trim(strtolower($confirm)) != 'y') {
+  echo 'Canceled.' . PHP_EOL;
+  exit;
+}
+
+echo PHP_EOL;
+
+foreach ($cleanup as $item) {
+  $fs->mkdir($item['dest']);
+  $fs->rename($item['src'], $item['dest'], TRUE);
+  echo "Moved {$item['src']} => {$item['dest']}", PHP_EOL;
+}
+
+echo 'Done!', PHP_EOL;
