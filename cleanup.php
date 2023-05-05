@@ -42,7 +42,7 @@ echo sprintf('Fetched %d instances.', count($data)), PHP_EOL;
 
 $fs = new Filesystem();
 foreach (['_deleted', 'backups', 'instances', 'srv', 'svc', 'usr'] as $name) {
-    if (!$fs->exists(WORKING_DIR . "/$name")) {
+    if (!$fs->exists(WORKING_DIR . "/$name") && !is_link(WORKING_DIR . "/$name")) {
         $fs->mkdir(WORKING_DIR . "/$name");
     }
 }
